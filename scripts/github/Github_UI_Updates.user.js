@@ -1,17 +1,15 @@
 // ==UserScript==
 // @name         GitHub UI Updates
-// @version      1.0.5
+// @namespace    http://tampermonkey.net/
+// @version      1.0.0
 // @description  Updates the GitHub UI to bring in some needed features.
 // @author       Trevor Lemon
 // @match        https://github.com/*
 // @icon         https://www.google.com/s2/favicons?domain=github.com
 // @grant        none
-//
-// @homepage     https://github.com/the0neWhoKnocks/star-monkey-scripts
-// @homepageURL  https://github.com/the0neWhoKnocks/star-monkey-scripts
-// @downloadURL  https://github.com/the0neWhoKnocks/star-monkey-scripts/raw/master/scripts/github/Github_UI_Updates.user.js
-// @updateURL    https://github.com/the0neWhoKnocks/star-monkey-scripts/raw/master/scripts/github/Github_UI_Updates.user.js
-// @supportURL   https://github.com/the0neWhoKnocks/star-monkey-scripts/issues
+// 
+// @require      https://github.com/the0neWhoKnocks/star-monkey-scripts/raw/master/scripts/github/Github_UI_Updates.user.js
+// @require      file://<REPO_PATH>/scripts/github/Github_UI_Updates.user.js
 // ==/UserScript==
 
 const basename = (str) => {
@@ -200,10 +198,7 @@ function renderDiffListing() {
     };
   });
   
-  console.log(changedFiles);
-  
-  const topLevelFiles = [];
-  const folders = changedFiles.reduce((obj, { anchor, deleted, path }) => {
+  const dirData = changedFiles.reduce((obj, { anchor, deleted, path }) => {
     const parentPath = dirname(path);
     const file = basename(path);
     let pathKey;
@@ -215,26 +210,29 @@ function renderDiffListing() {
       const _folders = parentPath.split('/').filter(p => !!p);
       
       _folders.forEach((_path, ndx) => {
-        const nestedContainer = _folders[ndx + 1] ? {} : [];
+        const isFolder = !!_folders[ndx + 1];
+        const container = { __files__: [], __folders__: {} };
         
         if (!currFolder) {
-          if (!obj[_path]) obj[_path] = nestedContainer;
-          currFolder = obj[_path];
+          if (!obj.__folders__[_path]) obj.__folders__[_path] = container;
+          currFolder = obj.__folders__[_path];
         }
         else {
-          if (!currFolder[_path]) currFolder[_path] = nestedContainer;
+          if (!currFolder[_path]) currFolder[_path] = container;
           currFolder = currFolder[_path];
         }
+        
+        currFolder = isFolder ? currFolder.__folders__ : currFolder.__files__;
       });
       
       if (Array.isArray(currFolder)) currFolder.push({ anchor, deleted, filename: file });
     }
     else {
-      topLevelFiles.push({ anchor, deleted, filename: file });
+      obj.__files__.push({ anchor, deleted, filename: file });
     }
     
     return obj;
-  }, {});
+  }, { __files__: [], __folders__: {} });
   
   const renderFiles = (files) => {
     let str = '';
@@ -245,18 +243,18 @@ function renderDiffListing() {
   };
   
   let markup = '';
-  const iterateFolders = (items) => {
-    if (Array.isArray(items)) return renderFiles(items);
-    else {
-      let _markup = '';
-      Object.keys(items).forEach(folder => {
-        _markup += `<folder opened data-path=" ${folder}/">${iterateFolders(items[folder])}</folder>`;
-      });
-      return _markup;
-    }
+  const iterateFolders = ({ __files__, __folders__ }) => {
+    let _markup = '';
+    
+    Object.keys(__folders__).forEach((folder) => {
+      _markup += `<folder opened data-path=" ${folder}/">${iterateFolders(__folders__[folder])}</folder>`;
+    });
+    
+    if (__files__.length) _markup += renderFiles(__files__);
+    
+    return _markup;
   };
-  markup += iterateFolders(folders);
-  markup += renderFiles(topLevelFiles);
+  markup += iterateFolders(dirData);
   
   const dirListEl = document.querySelector('dir-list');
   if (!dirListEl) {
@@ -381,6 +379,18 @@ function renderDiffListing() {
       diffsEl.appendChild(el);
     });
     
+    // Sometimes diffs get added to other child elements after the first render,
+    // perhaps for perfomance reasons. This should ensure that the file list is
+    // current.
+    const filesObserver = new MutationObserver(() => {
+      renderDiffListing();
+      filesObserver.disconnect();
+    });
+    filesObserver.observe(
+      diffsEl,
+      { attributes: false, childList: true, subtree: true }
+    );
+    
     document.querySelector('dir-list').addEventListener('click', ({ target }) => {
       if (target.nodeName === 'FOLDER') {
         if (target.hasAttribute('opened')) {
@@ -433,7 +443,7 @@ function render() {
       render();
     });
     observer.observe(
-      document.getElementById('js-repo-pjax-container'),
+      dynamicEl,
       { attributes: false, childList: true, subtree: false }
     );
 
