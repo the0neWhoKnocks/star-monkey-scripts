@@ -16,7 +16,7 @@ Go into the extension's Dashboard area.
 
 ### Remote Auto-Updates
 
-Remove the `@require` header that stars with `file://`. All updates will now be dependent on any updates pushed to the remote repo.
+Remove the `@require` header that starts with `file://`. All updates will now be dependent on any updates pushed to the remote repo.
 
 ### Local Development
 
