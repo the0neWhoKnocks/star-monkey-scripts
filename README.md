@@ -5,7 +5,7 @@ Grease/Tamper Monkey scripts
 
 ## Setup
 
-The simplest way to install/edit scripts are to simply copy and paste one of this repo's scripts into a new script within the extension. If any of the scripts contain `@require` headers that point to itself, delete them (those are for the below workflows).
+The simplest way to install/edit scripts is to copy and paste [one of the scripts](scripts) from this repo into a new script within the Grease/Tamper monkey extension. If any of the scripts contain `@require` headers that point to itself, delete them (those are for the below workflows).
 
 If you want automatic updates, or to keep scripts under version control, follow the below steps first, then complete your setup by following the instructions under **Remote Auto-Updates** or **Local Development** (depending on your needs).
 
@@ -37,4 +37,5 @@ If yo want to go between remote files and local files, you can simply move the c
 
 ## Documentation
 
+- [GreaseMonkey](https://wiki.greasespot.net/Greasemonkey_Manual:API)
 - [TamperMonkey](https://www.tampermonkey.net/documentation.php)
