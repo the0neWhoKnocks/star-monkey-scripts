@@ -428,9 +428,15 @@ function renderCompareUpdates() {
   console.log('[COMPARE] rendered');
 }
 
+function renderPRCommitsUpdates() {
+  renderDiffListing();
+  console.log('[COMMITS] rendered');
+}
+
 function render() {
   if (location.pathname.includes('/pulls')) renderPRListUpdates();
   else if (/\/pull\/\d+$/.test(location.pathname)) renderPRConvoUpdates();
+  else if (/\/pull\/\d+\/commits\/.*$/.test(location.pathname)) renderPRCommitsUpdates();
   else if (/\/pull\/\d+\/files$/.test(location.pathname)) renderPRFilesUpdates();
   else if (/\/compare\/.*$/.test(location.pathname)) renderCompareUpdates();
 }
