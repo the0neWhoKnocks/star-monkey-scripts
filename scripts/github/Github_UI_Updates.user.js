@@ -15,11 +15,11 @@
 const basename = (str) => {
   let base = str.substring(str.lastIndexOf('/') + 1); 
   return base;
-}
+};
 const dirname = (str) => {
   let dir = str.substring(0, str.lastIndexOf('/') + 1); 
   return dir;
-}
+};
 
 async function renderPRListUpdates() {
   const ID__FILTERS = 'tamperedFilters';
@@ -201,8 +201,6 @@ function renderDiffListing() {
   const dirData = changedFiles.reduce((obj, { anchor, deleted, path }) => {
     const parentPath = dirname(path);
     const file = basename(path);
-    let pathKey;
-    let f;
 
     if (parentPath && file) {
       // create nested folders
@@ -404,7 +402,7 @@ function renderDiffListing() {
       }
     });
     
-    document.querySelector('divider').addEventListener('click', ({ currentTarget }) => {
+    document.querySelector('divider').addEventListener('click', () => {
       if (diffViewEl.classList.contains('dir-list--closed')) {
         diffViewEl.classList.remove('dir-list--closed');
       }
