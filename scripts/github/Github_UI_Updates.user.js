@@ -1,6 +1,5 @@
 // ==UserScript==
 // @name         GitHub UI Updates
-// @namespace    http://tampermonkey.net/
 // @version      1.0.0
 // @description  Updates the GitHub UI to bring in some needed features.
 // @author       Trevor Lemon
@@ -439,7 +438,7 @@ function render() {
   else if (/\/compare\/.*$/.test(location.pathname)) renderCompareUpdates();
 }
 
-(function() {
+(() => {
   const dynamicEl = document.getElementById('js-repo-pjax-container');
   
   if (dynamicEl) {
