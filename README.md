@@ -6,6 +6,7 @@ Grease/Tamper Monkey scripts
 ## Setup
 
 The simplest way to install/edit scripts is to copy and paste [one of the scripts](scripts) from this repo into a new script within the Grease/Tamper monkey extension. If any of the scripts contain `@require` headers that point to itself, delete them (those are for the below workflows).
+There may be lint warnings (based on your extension's settings). Unfortunately those can't be configured at the script level for now, and will be up to the User to fix.
 
 If you want automatic updates, or to keep scripts under version control, follow the below steps first, then complete your setup by following the instructions under **Remote Auto-Updates** or **Local Development** (depending on your needs).
 
@@ -19,6 +20,8 @@ Go into the extension's Dashboard area.
 Remove the `@require` header that starts with `file://`. All updates will now be dependent on any updates pushed to the remote repo.
 
 ### Local Development
+
+This repo utilizes ESLint so you'll need to run `npm i` to ensure it's installed.
 
 These steps allow editing of local files and keeping changes under version control, while also allowing for the extension to reference your local files.
 
