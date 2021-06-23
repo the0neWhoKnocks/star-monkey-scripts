@@ -186,6 +186,7 @@ function renderPRConvoUpdates() {
 }
 
 function renderDiffListing() {
+  const ID__CURR_FILE_STYLE = 'currFileStyle';
   const diffViewEl = document.querySelector('.js-diff-container');
   const changedFiles = [...document.querySelectorAll('.file-header')].map(el => {
     const { anchor, fileDeleted, path } = el.dataset;
@@ -200,6 +201,7 @@ function renderDiffListing() {
   const dirData = changedFiles.reduce((obj, { anchor, deleted, path }) => {
     const parentPath = dirname(path);
     const file = basename(path);
+    const fileObj = { anchor, deleted, filename: file, path };
 
     if (parentPath && file) {
       // create nested folders
@@ -222,10 +224,10 @@ function renderDiffListing() {
         currFolder = isFolder ? currFolder.__folders__ : currFolder.__files__;
       });
       
-      if (Array.isArray(currFolder)) currFolder.push({ anchor, deleted, filename: file });
+      if (Array.isArray(currFolder)) currFolder.push(fileObj);
     }
     else {
-      obj.__files__.push({ anchor, deleted, filename: file });
+      obj.__files__.push(fileObj);
     }
     
     return obj;
@@ -233,8 +235,12 @@ function renderDiffListing() {
   
   const renderFiles = (files) => {
     let str = '';
-    files.forEach(({ anchor, deleted = '', filename }) => {
-      str += `<file ${deleted ? 'deleted' : ''}><a href="#${anchor}">${filename}</a></file>`;
+    files.forEach(({ anchor, deleted = '', filename, path }) => {
+      str += `
+        <file ${deleted ? 'deleted' : ''} data-path="${path}">
+          <a href="#${anchor}">${filename}</a>
+        </file>
+      `;
     });
     return str;
   };
@@ -317,7 +323,8 @@ function renderDiffListing() {
         dir-list file {
           user-select: all;
           white-space: nowrap;
-          display: block;
+          display: inline;
+          position: relative;
         }
         dir-list file::before {
           content: '\\01F4C4';
@@ -366,6 +373,7 @@ function renderDiffListing() {
           content: '\\203A';
         }
       </style>
+      <style id="${ID__CURR_FILE_STYLE}"></style>
       <dir-list>${markup}</dir-list>
       <divider></divider>
       <diffs></diffs>
@@ -413,6 +421,43 @@ function renderDiffListing() {
   else {
     dirListEl.innerHTML = markup;
   }
+  
+  const currFileStyleEl = document.getElementById(ID__CURR_FILE_STYLE);
+  
+  if (renderDiffListing.fileListObserver) renderDiffListing.fileListObserver.disconnect();
+  renderDiffListing.fileListObserver = new IntersectionObserver(
+    (records) => {
+      for (const record of records) {
+        if (record.isIntersecting) {
+          const { path } = record.target.querySelector('.file-header').dataset;
+          currFileStyleEl.textContent = `
+            dir-list file[data-path="${path}"]::after {
+              content: '';
+              width: 100%;
+              height: 100%;
+              padding: 1px;
+              border: solid 1px #008bc0;
+              border-radius: 0.25em;
+              pointer-events: none;
+              background: rgba(0, 255, 211, 0.25);
+              position: absolute;
+              top: -1px;
+              left: -2px;
+              z-index: -1;
+            }
+          `;
+        }
+      }
+    },
+    {
+      rootMargin: '0px 0px -100% 0px',
+      threshold: [0],
+    }
+  );
+  
+  [...document.querySelectorAll('.file')].forEach((el) => {
+    renderDiffListing.fileListObserver.observe(el);
+  });
 }
 
 function renderPRFilesUpdates() {
