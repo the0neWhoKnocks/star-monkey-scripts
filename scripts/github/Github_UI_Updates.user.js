@@ -475,12 +475,31 @@ function renderPRCommitsUpdates() {
   console.log('[COMMITS] rendered');
 }
 
+function renderCodeUpdates() {
+  if (/\/tree\/.*$/.test(location.pathname)) {
+    const fileNav = document.querySelector('.file-navigation');
+    const branchMenu = document.getElementById('branch-select-menu');
+    
+    if (fileNav && branchMenu) {
+      const branch = branchMenu.querySelector('summary').title;
+      const [baseURL] = location.href.split('/tree');
+      
+      branchMenu.parentNode.insertAdjacentHTML('afterend', `
+        <a class="btn ml-2 d-none d-md-block" href="${baseURL}/compare/master...${branch}">Compare</a>
+      `);
+    }
+  }
+  
+  console.log('[CODE] rendered');
+}
+
 function render() {
   if (location.pathname.includes('/pulls')) renderPRListUpdates();
   else if (/\/pull\/\d+$/.test(location.pathname)) renderPRConvoUpdates();
   else if (/\/pull\/\d+\/commits\/.*$/.test(location.pathname)) renderPRCommitsUpdates();
   else if (/\/pull\/\d+\/files$/.test(location.pathname)) renderPRFilesUpdates();
   else if (/\/compare\/.*$/.test(location.pathname)) renderCompareUpdates();
+  else renderCodeUpdates();
 }
 
 (() => {
