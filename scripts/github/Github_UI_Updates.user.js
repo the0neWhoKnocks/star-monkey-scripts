@@ -324,6 +324,7 @@ function renderDiffListing() {
   
   const dirListEl = document.querySelector('dir-list');
   if (!dirListEl) {
+    const TOP_NAV_HEIGHT = 60;
     diffViewEl.insertAdjacentHTML('afterbegin', `
       <style>
         .diff-view {
@@ -338,7 +339,7 @@ function renderDiffListing() {
         }
         .pr-toolbar ~ .diff-view dir-list,
         .pr-toolbar ~ .diff-view divider {
-          top: 60px;
+          top: ${TOP_NAV_HEIGHT}px;
         }
         
         dir-list,
@@ -347,7 +348,7 @@ function renderDiffListing() {
         }
         .pr-toolbar ~ .diff-view dir-list,
         .pr-toolbar ~ .diff-view divider {
-          height: calc(100vh - 60px);
+          height: calc(100vh - ${TOP_NAV_HEIGHT}px);
         }
 
         dir-list {
