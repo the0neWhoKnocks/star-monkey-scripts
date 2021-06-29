@@ -33,22 +33,63 @@ async function renderPRListUpdates() {
   if (!alreadyAdded) {
     document.head.insertAdjacentHTML('beforeend', `
       <style id="tamperedStyles">
-        [aria-label="Issues"] a[href*="author"] {
+        [aria-label="Issues"] a[href*="author"],
+        [data-type="approved"],
+        [data-type="changesRequested"],
+        [data-type="draft"],
+        [data-type="reviewRequired"] {
           height: 2em;
           font-size: 1.25em;
           font-weight: bold;
-          padding: 2px 8px 2px 2px;
           border: solid 1px;
           border-radius: 1em;
           display: inline-flex;
           align-items: center;
           vertical-align: top;
         }
+        
+        [aria-label="Issues"] a[href*="author"] {
+          padding: 2px 8px 2px 2px;
+        }
         [aria-label="Issues"] a[href*="author"] img {
           height: 100%;
           border-radius: 100%;
           margin-right: 0.5em;
           display: inline-block;
+        }
+        
+        [data-type="approved"],
+        [data-type="changesRequested"],
+        [data-type="draft"],
+        [data-type="reviewRequired"] {
+          padding: 2px 15px;
+        }
+        [data-type="reviewRequired"] {
+          background: #ffffc8;
+        }
+        [data-type="changesRequested"] {
+          background: #ffd5c8;
+        }
+        [data-type="draft"] {
+          background: #eee;
+        }
+        [data-type="approved"] {
+          background: #c6ffc6;
+        }
+        
+        .commit-build-statuses .color-text-success,
+        .commit-build-statuses .color-yellow-7 {
+          padding: 2px;
+          border: solid 1px;
+          border-radius: 100%;
+          display: inline-flex;
+          vertical-align: middle;
+        }
+        .commit-build-statuses .color-text-success {
+          background: #c6ffc6;
+        }
+        .commit-build-statuses .color-yellow-7 {
+          background: #f9ffc6;
         }
 
         .tampered__filters {
@@ -139,6 +180,28 @@ async function renderPRListUpdates() {
     userEls.forEach((el) => {
       const { textContent: username } = el;
       if (userData[username]) el.innerHTML = `<img src="${userData[username].avatarURL}" />${username}`;
+    });
+    
+    // add some 'type' data to the nodes to normalize things for CSS
+    [...document.querySelectorAll('.opened-by + span a')].forEach(el => {
+      const type = el.textContent.trim();
+      switch (type) {
+        case 'Approved':
+          el.dataset.type = 'approved';
+          break;
+        
+        case 'Changes requested':
+          el.dataset.type = 'changesRequested';
+          break;
+        
+        case 'Draft':
+          el.dataset.type = 'draft';
+          break;
+        
+        case 'Review required':
+          el.dataset.type = 'reviewRequired';
+          break;
+      }
     });
     
     console.log('[PULLS] Rendered');
