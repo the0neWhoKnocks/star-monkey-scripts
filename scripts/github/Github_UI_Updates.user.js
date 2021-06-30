@@ -539,6 +539,11 @@ function renderPRCommitsUpdates() {
   console.log('[COMMITS] rendered');
 }
 
+function renderCommitUpdates() {
+  renderDiffListing();
+  console.log('[COMMIT] rendered');
+}
+
 function renderCodeUpdates() {
   if (/\/tree\/.*$/.test(location.pathname)) {
     const fileNav = document.querySelector('.file-navigation');
@@ -563,6 +568,7 @@ function render() {
   else if (/\/pull\/\d+\/commits\/.*$/.test(location.pathname)) renderPRCommitsUpdates();
   else if (/\/pull\/\d+\/files$/.test(location.pathname)) renderPRFilesUpdates();
   else if (/\/compare\/.*$/.test(location.pathname)) renderCompareUpdates();
+  else if (/\/commit\/.*$/.test(location.pathname)) renderCommitUpdates();
   else renderCodeUpdates();
 }
 
