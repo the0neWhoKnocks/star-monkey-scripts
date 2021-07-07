@@ -385,9 +385,10 @@ function renderDiffListing() {
         }
 
         dir-list file {
+          min-width: 100%;
           user-select: all;
           white-space: nowrap;
-          display: inline;
+          display: inline-block;
           position: relative;
         }
         dir-list file::before {
