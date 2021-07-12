@@ -551,8 +551,7 @@ function renderCodeUpdates() {
     const branchMenu = document.getElementById('branch-select-menu');
     
     if (fileNav && branchMenu) {
-      const branch = branchMenu.querySelector('summary').title;
-      const [baseURL] = location.href.split('/tree');
+      const [baseURL, branch] = location.href.split('/tree/');
       
       branchMenu.parentNode.insertAdjacentHTML('afterend', `
         <a class="btn ml-2 d-none d-md-block" href="${baseURL}/compare/master...${branch}">Compare</a>
