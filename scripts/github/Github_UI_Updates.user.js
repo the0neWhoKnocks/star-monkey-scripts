@@ -11,6 +11,8 @@
 // @require      file://<REPO_PATH>/scripts/github/Github_UI_Updates.user.js
 // ==/UserScript==
 
+let viewHasDiffListing = false;
+
 const basename = (str) => {
   let base = str.substring(str.lastIndexOf('/') + 1); 
   return base;
@@ -248,7 +250,29 @@ function renderPRConvoUpdates() {
   }
 }
 
+// Sometimes diffs get added to other child elements after the first render,
+// perhaps for perfomance reasons. Piggyback off of their fetch function to detect
+// when requests for diffs are occurring and render the list again.
+// 
+// Comes from https://github.githubassets.com/assets/app/assets/modules/github/include-fragment-element-hacks.ts
+if (
+  window.IncludeFragmentElement.prototype.fetch
+  && !window.IncludeFragmentElement.prototype.fetch.proxied
+) {
+  const origFetch = window.IncludeFragmentElement.prototype.fetch;
+  window.IncludeFragmentElement.prototype.fetch = (req) => {
+    return origFetch(req).then((r) => {
+      if (req.url.includes('diffs?bytes')) setTimeout(() => renderDiffListing(), 10);
+      
+      return r;
+    });
+  };
+  window.IncludeFragmentElement.prototype.fetch.proxied = true;
+}
+
 function renderDiffListing() {
+  viewHasDiffListing = true;
+  
   const ID__CURR_FILE_STYLE = 'currFileStyle';
   const diffViewEl = document.querySelector('.js-diff-container');
   const changedFiles = [...document.querySelectorAll('.file-header')].map(el => {
@@ -449,18 +473,6 @@ function renderDiffListing() {
       diffsEl.appendChild(el);
     });
     
-    // Sometimes diffs get added to other child elements after the first render,
-    // perhaps for perfomance reasons. This should ensure that the file list is
-    // current.
-    const filesObserver = new MutationObserver(() => {
-      renderDiffListing();
-      filesObserver.disconnect();
-    });
-    filesObserver.observe(
-      diffsEl,
-      { attributes: false, childList: true, subtree: true }
-    );
-    
     document.querySelector('dir-list').addEventListener('click', ({ target }) => {
       if (target.nodeName === 'FOLDER') {
         if (target.hasAttribute('opened')) {
@@ -563,6 +575,8 @@ function renderCodeUpdates() {
 }
 
 function render() {
+  viewHasDiffListing = false;
+  
   if (location.pathname.includes('/pulls')) renderPRListUpdates();
   else if (/\/pull\/\d+$/.test(location.pathname)) renderPRConvoUpdates();
   else if (/\/pull\/\d+\/commits\/.*$/.test(location.pathname)) renderPRCommitsUpdates();
