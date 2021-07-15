@@ -26,6 +26,7 @@ This repo utilizes ESLint so you'll need to run `npm i` to ensure it's installed
 These steps allow editing of local files and keeping changes under version control, while also allowing for the extension to reference your local files.
 
 - Clone this repo. All references to `<REPO_PATH>` will be the absolute path to the repo.
+- **NOTE**: The next step doesn't actually work in Firefox. [There's been an open issue about it for a long time so it's probably not going to get fixed](https://github.com/Tampermonkey/tampermonkey/issues/347).
 - In your extension's settings (Grease or Tamper Monkey), you need to enable `Allow access to file URLs`.
   - Remove the `@require` header that starts with `https://github.com`.
   - Replace `<REPO_PATH>` with the actual path.
