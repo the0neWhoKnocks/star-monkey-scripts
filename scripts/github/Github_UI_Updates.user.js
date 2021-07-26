@@ -5,11 +5,19 @@
 // @author       Trevor Lemon
 // @match        https://github.com/*
 // @icon         https://www.google.com/s2/favicons?domain=github.com
-// @grant        none
+// @grant        window.onurlchange
 // 
 // @require      https://github.com/the0neWhoKnocks/star-monkey-scripts/raw/master/scripts/github/Github_UI_Updates.user.js
 // @require      file://<REPO_PATH>/scripts/github/Github_UI_Updates.user.js
 // ==/UserScript==
+
+const LOG_PREFIX = '[GH_UI_EXT]';
+// NOTE:
+// - Enable logs via `localStorage.GHUIExt = true;`
+// - Disable logs via `delete localStorage.GHUIExt;`
+const log = (...args) => {
+  if (localStorage.GHUIExt) console.log(LOG_PREFIX, ...args);
+};
 
 const basename = (str) => {
   let base = str.substring(str.lastIndexOf('/') + 1); 
@@ -29,8 +37,11 @@ async function renderPRListUpdates() {
   const FILTER__PR__OPEN = 'is%3Aopen';
   const LS_KEY = 'tamperMonkey.ghUsers';
   const alreadyAdded = document.getElementById(ID__FILTERS);
+  const searchBarEl = document.querySelector('.repository-content [role="search"]');
   
-  if (!alreadyAdded) {
+  if (!alreadyAdded && searchBarEl) {
+    const searchBarWrapper = searchBarEl.parentElement;
+    
     document.head.insertAdjacentHTML('beforeend', `
       <style id="tamperedStyles">
         [aria-label="Issues"] a[href*="author"],
@@ -118,14 +129,13 @@ async function renderPRListUpdates() {
       </style>
     `);
 
-    const searchBarEl = document.querySelector('.repository-content [role="search"]').parentElement;
     const filterBtns = [
       ['Open', FILTER__PR__OPEN],
       ['Merged', FILTER__PR__MERGED],
       ['Closed', FILTER__PR__CLOSED],
     ];
 
-    searchBarEl.insertAdjacentHTML('afterend', `
+    searchBarWrapper.insertAdjacentHTML('afterend', `
       <nav id="${ID__FILTERS}" class="tampered__filters">
         ${filterBtns.map(([label, filter]) => {
           let _class = '';
@@ -204,7 +214,7 @@ async function renderPRListUpdates() {
       }
     });
     
-    console.log('[PULLS] Rendered');
+    log('[PULLS] Rendered');
   }
   
   const clearEl = document.querySelector('.issues-reset-query-wrapper');
@@ -215,352 +225,370 @@ function renderPRConvoUpdates() {
   const ID__JIRA_TICKETS = 'tamperedJiraTickets';
   const alreadyAdded = document.getElementById(ID__JIRA_TICKETS);
   const sidebarEl = document.getElementById('partial-discussion-sidebar');
-  const titleEl = document.querySelector('.gh-header-title .markdown-title');
-  const ticketRegEx = /^(\w{3,4}-\d{0,4})/g;
-  const origTitle = titleEl.innerText.trim();
-  const tickets = origTitle.match(ticketRegEx);
+  
+  if (sidebarEl) {
+    const titleEl = document.querySelector('.gh-header-title .markdown-title');
+    const ticketRegEx = /^(\w{3,4}-\d{0,4})/g;
+    const origTitle = titleEl.innerText.trim();
+    const tickets = origTitle.match(ticketRegEx);
 
-  if (!alreadyAdded && tickets && tickets.length) {
-    sidebarEl.insertAdjacentHTML('afterbegin', `
-      <style>
-        .jira-link, .jira-link:hover {
-          color: var(--color-text-link);
-          font-weight: bold;
-          text-decoration: none;
-          padding: 0.25em 0.5em;
-          border: solid 1px;
-          border-left-width: 8px;
-          border-color: var(--color-box-border-info);
-          border-radius: 0.25em;
-          background: var(--color-box-bg-info);
-          display: block;
-        }
-      </style>
-      <div id="${ID__JIRA_TICKETS}" class="discussion-sidebar-item">
-        <div class="text-bold discussion-sidebar-heading">Jira Ticket(s)</div>
-        ${tickets.map(ticket => {
-          return `<a class="jira-link" href="https://jira.nike.com/browse/${ticket}" target="_blank">${ticket}</a>`;
-        }).join('')}
-      </div>
-    `);
-    
-    console.log('[PULL] Tickets found, rendered link(s)');
+    if (!alreadyAdded && tickets && tickets.length) {
+      sidebarEl.insertAdjacentHTML('afterbegin', `
+        <style>
+          .jira-link, .jira-link:hover {
+            color: var(--color-text-link);
+            font-weight: bold;
+            text-decoration: none;
+            padding: 0.25em 0.5em;
+            border: solid 1px;
+            border-left-width: 8px;
+            border-color: var(--color-box-border-info);
+            border-radius: 0.25em;
+            background: var(--color-box-bg-info);
+            display: block;
+          }
+        </style>
+        <div id="${ID__JIRA_TICKETS}" class="discussion-sidebar-item">
+          <div class="text-bold discussion-sidebar-heading">Jira Ticket(s)</div>
+          ${tickets.map(ticket => {
+            return `<a class="jira-link" href="https://jira.nike.com/browse/${ticket}" target="_blank">${ticket}</a>`;
+          }).join('')}
+        </div>
+      `);
+      
+      log('[PULL] Tickets found, rendered link(s)');
+    }
   }
 }
 
 function renderDiffListing() {
   const ID__CURR_FILE_STYLE = 'currFileStyle';
   const diffViewEl = document.querySelector('.js-diff-container');
-  const changedFiles = [...document.querySelectorAll('.file-header')].map(el => {
-    const { anchor, fileDeleted, path } = el.dataset;
-    return {
-      anchor,
-      deleted: fileDeleted === 'true',
-      el: el.closest('.js-file'),
-      path,
-    };
-  });
   
-  // console.log(changedFiles.map(({ path }) => path).join('\n'));
-  
-  const dirData = changedFiles.reduce((obj, { anchor, deleted, path }) => {
-    const parentPath = dirname(path);
-    const file = basename(path);
-    const fileObj = { anchor, deleted, filename: file, path };
-
-    if (parentPath && file) {
-      // create nested folders
-      let currFolder;
-      const _folders = parentPath.split('/').filter(p => !!p);
-      
-      _folders.forEach((_path, ndx) => {
-        const isFolder = !!_folders[ndx + 1];
-        const container = { __files__: [], __folders__: {} };
-        
-        if (!currFolder) {
-          if (!obj.__folders__[_path]) obj.__folders__[_path] = container;
-          currFolder = obj.__folders__[_path];
-        }
-        else {
-          if (!currFolder[_path]) currFolder[_path] = container;
-          currFolder = currFolder[_path];
-        }
-        
-        currFolder = isFolder ? currFolder.__folders__ : currFolder.__files__;
-      });
-      
-      if (Array.isArray(currFolder)) currFolder.push(fileObj);
-    }
-    else {
-      obj.__files__.push(fileObj);
-    }
-    
-    return obj;
-  }, { __files__: [], __folders__: {} });
-  
-  const renderFiles = (files) => {
-    let str = '';
-    files.forEach(({ anchor, deleted = '', filename, path }) => {
-      str += `
-        <file ${deleted ? 'deleted' : ''} data-path="${path}">
-          <a href="#${anchor}">${filename}</a>
-        </file>
-      `;
-    });
-    return str;
-  };
-  
-  let markup = '';
-  const iterateFolders = ({ __files__, __folders__ }) => {
-    let _markup = '';
-    
-    Object.keys(__folders__).forEach((folder) => {
-      _markup += `<folder opened data-path=" ${folder}/">${iterateFolders(__folders__[folder])}</folder>`;
-    });
-    
-    if (__files__.length) _markup += renderFiles(__files__);
-    
-    return _markup;
-  };
-  markup += iterateFolders(dirData);
-  
-  const dirListEl = document.querySelector('dir-list');
-  if (!dirListEl) {
-    const TOP_NAV_HEIGHT = 60;
-    diffViewEl.insertAdjacentHTML('afterbegin', `
-      <style>
-        .diff-view {
-          display: flex;
-        }
-        
-        dir-list,
-        divider {
-          align-self: flex-start; /* allow for sticky in a flex container */
-          top: 0px;
-          position: sticky;
-        }
-        .pr-toolbar ~ .diff-view dir-list,
-        .pr-toolbar ~ .diff-view divider {
-          top: ${TOP_NAV_HEIGHT}px;
-        }
-        
-        dir-list,
-        divider {
-          height: 100vh;
-        }
-        .pr-toolbar ~ .diff-view dir-list,
-        .pr-toolbar ~ .diff-view divider {
-          height: calc(100vh - ${TOP_NAV_HEIGHT}px);
-        }
-
-        dir-list {
-          width: 20%;
-          overflow: auto;
-          padding: 1em 2em 1em 1em;
-          flex-shrink: 0;
-        }
-        diffs {
-          width: 77%;
-          flex-grow: 1;
-        }
-        .diff-view.dir-list--closed dir-list {
-          display: none;
-        }
-
-        dir-list folder {
-          display: block;
-          user-select: none;
-        }
-        dir-list folder[closed] > * {
-          display: none;
-        }
-        dir-list folder::before {
-          white-space: nowrap;
-          cursor: pointer;
-          display: block;
-        }
-        dir-list folder[opened]::before {
-          content: '- \\01F4C2' attr(data-path);
-        }
-        dir-list folder[closed]::before {
-          content: '+ \\01F4C2' attr(data-path);
-        }
-
-        dir-list file {
-          min-width: 100%;
-          user-select: all;
-          white-space: nowrap;
-          display: inline-block;
-          position: relative;
-        }
-        dir-list file::before {
-          content: '\\01F4C4';
-          padding-right: 0.25em;
-          display: inline-block;
-        }
-        dir-list file[deleted] a {
-          color: red;
-          text-decoration: line-through;
-        }
-
-        folder > folder,
-        folder file {
-          margin-left: 1em;
-        }
-        
-        divider {
-          width: 3em;
-          cursor: pointer;
-          flex-shrink: 0;
-        }
-        divider::before {
-          content: '';
-          width: 1px;
-          height: 100%;
-          background: #ccc;
-          position: absolute;
-          top: 0;
-          left: 50%;
-          transform: translateX(-50%);
-        }
-        divider::after {
-          content: '\\2039';
-          font-size: 1.5em;
-          padding: 0.25em;
-          border: solid 1px #ccc;
-          border-radius: 0.5em;
-          background: #fff;
-          display: block;
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-        }
-        .diff-view.dir-list--closed divider::after {
-          content: '\\203A';
-        }
-      </style>
-      <style id="${ID__CURR_FILE_STYLE}"></style>
-      <dir-list>${markup}</dir-list>
-      <divider></divider>
-      <diffs></diffs>
-    `);
-    
-    const diffsEl = document.querySelector('diffs');
-    [...document.querySelectorAll('.js-diff-progressive-container')].forEach((el) => {
-      diffsEl.appendChild(el);
-    });
-    
-    // The diffs come in as rendered HTML from another endpoint. Only way to
-    // reliably display a list of files is to listen for when the diff els get
-    // updated and re-render.
-    const filesObserver = new MutationObserver(() => {
-      renderDiffListing();
-    });
-    filesObserver.observe(
-      diffsEl,
-      { attributes: false, childList: true, subtree: true }
-    );
-    
-    document.querySelector('dir-list').addEventListener('click', ({ target }) => {
-      if (target.nodeName === 'FOLDER') {
-        if (target.hasAttribute('opened')) {
-          target.removeAttribute('opened');
-          target.setAttribute('closed', '');
-        }
-        else {
-          target.removeAttribute('closed');
-          target.setAttribute('opened', '');
-        }
+  if (diffViewEl) {
+    const changedFiles = [...document.querySelectorAll('.file-header')].reduce((arr, el) => {
+      const { anchor, fileDeleted, path } = el.dataset;
+      if (anchor && path) {
+        arr.push({
+          anchor,
+          deleted: fileDeleted === 'true',
+          el: el.closest('.js-file'),
+          path,
+        });
       }
-    });
+      
+      return arr;
+    }, []);
     
-    document.querySelector('divider').addEventListener('click', () => {
-      if (diffViewEl.classList.contains('dir-list--closed')) {
-        diffViewEl.classList.remove('dir-list--closed');
+    // console.log(changedFiles.map(({ path }) => path).join('\n'));
+    
+    const dirData = changedFiles.reduce((obj, { anchor, deleted, path }) => {
+      const parentPath = dirname(path);
+      const file = basename(path);
+      const fileObj = { anchor, deleted, filename: file, path };
+
+      if (parentPath && file) {
+        // create nested folders
+        let currFolder;
+        const _folders = parentPath.split('/').filter(p => !!p);
+        
+        _folders.forEach((_path, ndx) => {
+          const isFolder = !!_folders[ndx + 1];
+          const container = { __files__: [], __folders__: {} };
+          
+          if (!currFolder) {
+            if (!obj.__folders__[_path]) obj.__folders__[_path] = container;
+            currFolder = obj.__folders__[_path];
+          }
+          else {
+            if (!currFolder[_path]) currFolder[_path] = container;
+            currFolder = currFolder[_path];
+          }
+          
+          currFolder = isFolder ? currFolder.__folders__ : currFolder.__files__;
+        });
+        
+        if (Array.isArray(currFolder)) currFolder.push(fileObj);
       }
       else {
-        diffViewEl.classList.add('dir-list--closed');
+        obj.__files__.push(fileObj);
       }
+      
+      return obj;
+    }, { __files__: [], __folders__: {} });
+    
+    const renderFiles = (files) => {
+      let str = '';
+      files.forEach(({ anchor, deleted = '', filename, path }) => {
+        str += `
+          <file ${deleted ? 'deleted' : ''} data-path="${path}">
+            <a href="#${anchor}">${filename}</a>
+          </file>
+        `;
+      });
+      return str;
+    };
+    
+    let markup = '';
+    const iterateFolders = ({ __files__, __folders__ }) => {
+      let _markup = '';
+      
+      Object.keys(__folders__).forEach((folder) => {
+        _markup += `<folder opened data-path=" ${folder}/">${iterateFolders(__folders__[folder])}</folder>`;
+      });
+      
+      if (__files__.length) _markup += renderFiles(__files__);
+      
+      return _markup;
+    };
+    markup += iterateFolders(dirData);
+  
+    const dirListEl = document.querySelector('dir-list');
+    if (!dirListEl) {
+      const TOP_NAV_HEIGHT = 60;
+      diffViewEl.insertAdjacentHTML('afterbegin', `
+        <style>
+          .diff-view {
+            display: flex;
+          }
+          
+          dir-list,
+          divider {
+            align-self: flex-start; /* allow for sticky in a flex container */
+            top: 0px;
+            position: sticky;
+          }
+          .pr-toolbar ~ .diff-view dir-list,
+          .pr-toolbar ~ .diff-view divider {
+            top: ${TOP_NAV_HEIGHT}px;
+          }
+          
+          dir-list,
+          divider {
+            height: 100vh;
+          }
+          .pr-toolbar ~ .diff-view dir-list,
+          .pr-toolbar ~ .diff-view divider {
+            height: calc(100vh - ${TOP_NAV_HEIGHT}px);
+          }
+
+          dir-list {
+            width: 20%;
+            overflow: auto;
+            padding: 1em 2em 1em 1em;
+            flex-shrink: 0;
+          }
+          diffs {
+            width: 77%;
+            flex-grow: 1;
+          }
+          .diff-view.dir-list--closed dir-list {
+            display: none;
+          }
+
+          dir-list folder {
+            display: block;
+            user-select: none;
+          }
+          dir-list folder[closed] > * {
+            display: none;
+          }
+          dir-list folder::before {
+            white-space: nowrap;
+            cursor: pointer;
+            display: block;
+          }
+          dir-list folder[opened]::before {
+            content: '- \\01F4C2' attr(data-path);
+          }
+          dir-list folder[closed]::before {
+            content: '+ \\01F4C2' attr(data-path);
+          }
+
+          dir-list file {
+            min-width: 100%;
+            user-select: all;
+            white-space: nowrap;
+            display: inline-block;
+            position: relative;
+          }
+          dir-list file::before {
+            content: '\\01F4C4';
+            padding-right: 0.25em;
+            display: inline-block;
+          }
+          dir-list file[deleted] a {
+            color: red;
+            text-decoration: line-through;
+          }
+
+          folder > folder,
+          folder file {
+            margin-left: 1em;
+          }
+          
+          divider {
+            width: 3em;
+            cursor: pointer;
+            flex-shrink: 0;
+          }
+          divider::before {
+            content: '';
+            width: 1px;
+            height: 100%;
+            background: #ccc;
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+          }
+          divider::after {
+            content: '\\2039';
+            font-size: 1.5em;
+            padding: 0.25em;
+            border: solid 1px #ccc;
+            border-radius: 0.5em;
+            background: #fff;
+            display: block;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+          }
+          .diff-view.dir-list--closed divider::after {
+            content: '\\203A';
+          }
+        </style>
+        <style id="${ID__CURR_FILE_STYLE}"></style>
+        <dir-list>${markup}</dir-list>
+        <divider></divider>
+        <diffs></diffs>
+      `);
+      
+      const diffsEl = document.querySelector('diffs');
+      [...document.querySelectorAll('.js-diff-progressive-container')].forEach((el) => {
+        diffsEl.appendChild(el);
+      });
+      
+      // The diffs come in as rendered HTML from another endpoint. Only way to
+      // reliably display a list of files is to listen for when the diff els get
+      // updated and re-render.
+      const filesObserver = new MutationObserver(() => {
+        renderDiffListing();
+      });
+      filesObserver.observe(
+        diffsEl,
+        { attributes: false, childList: true, subtree: true }
+      );
+      
+      document.querySelector('dir-list').addEventListener('click', ({ target }) => {
+        if (target.nodeName === 'FOLDER') {
+          if (target.hasAttribute('opened')) {
+            target.removeAttribute('opened');
+            target.setAttribute('closed', '');
+          }
+          else {
+            target.removeAttribute('closed');
+            target.setAttribute('opened', '');
+          }
+        }
+      });
+      
+      document.querySelector('divider').addEventListener('click', () => {
+        if (diffViewEl.classList.contains('dir-list--closed')) {
+          diffViewEl.classList.remove('dir-list--closed');
+        }
+        else {
+          diffViewEl.classList.add('dir-list--closed');
+        }
+      });
+    }
+    else {
+      dirListEl.innerHTML = markup;
+    }
+    
+    const currFileStyleEl = document.getElementById(ID__CURR_FILE_STYLE);
+    
+    if (renderDiffListing.fileListObserver) renderDiffListing.fileListObserver.disconnect();
+    renderDiffListing.fileListObserver = new IntersectionObserver(
+      (records) => {
+        for (const record of records) {
+          if (record.isIntersecting) {
+            const { path } = record.target.querySelector('.file-header').dataset;
+            currFileStyleEl.textContent = `
+              dir-list file[data-path="${path}"]::after {
+                content: '';
+                width: 100%;
+                height: 100%;
+                padding: 1px;
+                border: solid 1px #008bc0;
+                border-radius: 0.25em;
+                pointer-events: none;
+                background: rgba(0, 255, 211, 0.25);
+                position: absolute;
+                top: -1px;
+                left: -2px;
+                z-index: -1;
+              }
+            `;
+          }
+        }
+      },
+      {
+        rootMargin: '0px 0px -100% 0px',
+        threshold: [0],
+      }
+    );
+    
+    [...document.querySelectorAll('.file')].forEach((el) => {
+      renderDiffListing.fileListObserver.observe(el);
     });
   }
-  else {
-    dirListEl.innerHTML = markup;
-  }
-  
-  const currFileStyleEl = document.getElementById(ID__CURR_FILE_STYLE);
-  
-  if (renderDiffListing.fileListObserver) renderDiffListing.fileListObserver.disconnect();
-  renderDiffListing.fileListObserver = new IntersectionObserver(
-    (records) => {
-      for (const record of records) {
-        if (record.isIntersecting) {
-          const { path } = record.target.querySelector('.file-header').dataset;
-          currFileStyleEl.textContent = `
-            dir-list file[data-path="${path}"]::after {
-              content: '';
-              width: 100%;
-              height: 100%;
-              padding: 1px;
-              border: solid 1px #008bc0;
-              border-radius: 0.25em;
-              pointer-events: none;
-              background: rgba(0, 255, 211, 0.25);
-              position: absolute;
-              top: -1px;
-              left: -2px;
-              z-index: -1;
-            }
-          `;
-        }
-      }
-    },
-    {
-      rootMargin: '0px 0px -100% 0px',
-      threshold: [0],
-    }
-  );
-  
-  [...document.querySelectorAll('.file')].forEach((el) => {
-    renderDiffListing.fileListObserver.observe(el);
-  });
 }
 
 function renderPRFilesUpdates() {
   renderDiffListing();
-  console.log('[PULL] files rendered');
+  log('[PULL] files rendered');
 }
 
 function renderCompareUpdates() {
   renderDiffListing();
-  console.log('[COMPARE] rendered');
+  log('[COMPARE] rendered');
 }
 
 function renderPRCommitsUpdates() {
   renderDiffListing();
-  console.log('[COMMITS] rendered');
+  log('[COMMITS] rendered');
 }
 
 function renderCommitUpdates() {
   renderDiffListing();
-  console.log('[COMMIT] rendered');
+  log('[COMMIT] rendered');
 }
 
 function renderCodeUpdates() {
   if (/\/tree\/.*$/.test(location.pathname)) {
+    const SELECTOR = 'compare-btn';
     const fileNav = document.querySelector('.file-navigation');
     const branchMenu = document.getElementById('branch-select-menu');
     
     if (fileNav && branchMenu) {
+      const compareBtn = document.querySelector(`.${SELECTOR}`);
       const [baseURL, branch] = location.href.split('/tree/');
+      const href = `${baseURL}/compare/master...${branch}`;
       
-      branchMenu.parentNode.insertAdjacentHTML('afterend', `
-        <a class="btn ml-2 d-none d-md-block" href="${baseURL}/compare/master...${branch}">Compare</a>
-      `);
+      if (compareBtn) {
+        compareBtn.href = href;
+      }
+      else {
+        branchMenu.parentNode.insertAdjacentHTML('afterend', `
+          <a class="${SELECTOR} btn ml-2 d-none d-md-block" href="${baseURL}/compare/master...${branch}">Compare</a>
+        `);
+      }
     }
   }
   
-  console.log('[CODE] rendered');
+  log('[CODE] rendered');
 }
 
 function render() {
@@ -584,7 +612,14 @@ function render() {
       dynamicEl,
       { attributes: false, childList: true, subtree: false }
     );
+    log('PJAX Container Observer set up');
 
     render();
   }
+  
+  // gets triggered twice for each change
+  window.addEventListener('urlchange', ({ url }) => {
+    log(`URL changed to: "${url}"`);
+    render();
+  });
 })();
