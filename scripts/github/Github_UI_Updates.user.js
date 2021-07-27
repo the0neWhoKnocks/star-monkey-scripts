@@ -334,7 +334,7 @@ function renderDiffListing() {
       let _markup = '';
       
       Object.keys(__folders__).forEach((folder) => {
-        _markup += `<folder opened data-path=" ${folder}/">${iterateFolders(__folders__[folder])}</folder>`;
+        _markup += `<folder opened data-path=" ${folder}/">${iterateFolders(__folders__[folder])}<end></end></folder>`;
       });
       
       if (__files__.length) _markup += renderFiles(__files__);
@@ -389,12 +389,14 @@ function renderDiffListing() {
           dir-list folder {
             display: block;
             user-select: none;
+            position: relative;
           }
           dir-list folder[closed] > * {
             display: none;
           }
           dir-list folder::before {
             white-space: nowrap;
+            background: #fff;
             cursor: pointer;
             display: block;
           }
@@ -404,11 +406,31 @@ function renderDiffListing() {
           dir-list folder[closed]::before {
             content: '+ \\01F4C2' attr(data-path);
           }
+          dir-list folder::after {
+            content: '';
+            width: 2em;
+            color: #b3b3b3;
+            border-style: dashed;
+            border-width: 1px;
+            border-right: none;
+            border-top: none;
+            position: absolute;
+            top: 1em;
+            bottom: 0;
+            left: 0;
+            z-index: -1;
+          }
+          dir-list folder > end {
+            height: 0.25em;
+            margin-bottom: 0.25em;
+            display: block;
+          }
 
           dir-list file {
             min-width: 100%;
             user-select: all;
             white-space: nowrap;
+            background: #fff;
             display: inline-block;
             position: relative;
           }
@@ -528,7 +550,7 @@ function renderDiffListing() {
                 position: absolute;
                 top: -1px;
                 left: -2px;
-                z-index: -1;
+                z-index: 1;
               }
             `;
           }
