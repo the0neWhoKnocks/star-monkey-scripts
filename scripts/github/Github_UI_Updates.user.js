@@ -557,7 +557,7 @@ function renderDiffListing() {
         }
       },
       {
-        rootMargin: '0px 0px -100% 0px',
+        rootMargin: '0px 0px -95% 0px',
         threshold: [0],
       }
     );
