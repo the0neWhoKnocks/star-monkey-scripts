@@ -449,6 +449,15 @@ function renderDiffListing() {
             margin-left: 1em;
           }
           
+          folder > folder:hover::before,
+          dir-list file a:hover {
+            color: green;
+            font-weight: bold;
+          }
+          folder > folder:hover::after {
+            color: green;
+          }
+          
           divider {
             width: 3em;
             cursor: pointer;
