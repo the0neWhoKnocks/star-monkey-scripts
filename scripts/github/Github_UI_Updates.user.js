@@ -264,8 +264,11 @@ function renderPRConvoUpdates() {
 function renderDiffListing() {
   const ID__CURR_FILE_STYLE = 'currFileStyle';
   const diffViewEl = document.querySelector('.js-diff-container');
+  const ghFileList = document.querySelector('[data-target="diff-layout.sidebarContainer"]');
   
   if (diffViewEl) {
+    if (ghFileList) ghFileList.remove();
+    
     const changedFiles = [...document.querySelectorAll('.file-header')].reduce((arr, el) => {
       const { anchor, fileDeleted, path } = el.dataset;
       if (anchor && path) {
@@ -348,6 +351,12 @@ function renderDiffListing() {
       const TOP_NAV_HEIGHT = 60;
       diffViewEl.insertAdjacentHTML('afterbegin', `
         <style>
+          /* GH overrides */
+          .Layout {
+            --Layout-gutter: 0px !important;
+            --Layout-sidebar-width: 0px !important;
+          }
+          
           .diff-view {
             display: flex;
           }
